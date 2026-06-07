@@ -1,0 +1,16 @@
+{
+  "name": "pixelhid ESP32-S3 firmware",
+  "version": "1.7.0-hid-uuid",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-S3",
+      "parts": [
+        {
+          "path": "firmware/pixelhid-esp32s3-1.7.0-hid-uuid.bin",
+          "offset": 0
+        }
+      ]
+    }
+  ]
+}

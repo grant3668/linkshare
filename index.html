@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32-S3</title>
+  <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; display: flex;
+           flex-direction: column; gap: 18px; align-items: center;
+           justify-content: center; min-height: 90vh; margin: 0; }
+    button { font-size: 1rem; padding: 10px 22px; border-radius: 8px;
+             border: 1px solid #8886; background: #2563eb; color: #fff; cursor: pointer; }
+    #testerId { font-size: 1.2rem; font-weight: 700; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <esp-web-install-button manifest="./manifest.json">
+    <button slot="activate">连接 / 烧录</button>
+  </esp-web-install-button>
+
+  <button id="readBtn">读取 ID</button>
+  <div id="testerId">—</div>
+
+  <script>
+    const btn = document.getElementById('readBtn');
+    const out = document.getElementById('testerId');
+    btn.addEventListener('click', async () => {
+      if (!('serial' in navigator)) { out.textContent = '浏览器不支持(用 Chrome/Edge)'; return; }
+      btn.disabled = true; out.textContent = '读取中…';
+      let port;
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 115200 });
+        const w = port.writable.getWriter();
+        await w.write(new TextEncoder().encode('serial\n'));
+        w.releaseLock();
+        const r = port.readable.pipeThrough(new TextDecoderStream()).getReader();
+        let buf = '', tid = null, deadline = Date.now() + 3000;
+        while (Date.now() < deadline) {
+          const { value, done } = await r.read();
+          if (done) break;
+          buf += value;
+          const m = buf.match(/esp32=([0-9A-Fa-f]{12})/);
+          if (m) { tid = m[1].toUpperCase(); break; }
+        }
+        try { await r.cancel(); } catch (e) {}
+        out.textContent = tid || '没读到';
+      } catch (e) {
+        out.textContent = '失败: ' + e.message;
+      } finally {
+        try { if (port) await port.close(); } catch (e) {}
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
